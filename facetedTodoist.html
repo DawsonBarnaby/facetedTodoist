@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic iFrame with Radio Buttons</title>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+        .panel {
+            flex: 1;
+            border: 1px solid #ccc;
+            overflow: auto;
+        }
+        .panel.left {
+            flex: 0 0 300px; /* Left panel width */
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+        .panel.right {
+            flex: 1;
+        }
+        .radio-group {
+            margin-bottom: 20px;
+        }
+        .radio-group label {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel left">
+        <div class="radio-group" data-group="category">
+            <label><input type="radio" name="category" value="all"> All</label>
+            <label><input type="radio" name="category" value="planning"> Planning</label>
+            <label><input type="radio" name="category" value="comms"> Comms</label>
+            <label><input type="radio" name="category" value="morning routine"> Morning Routine</label>
+            <label><input type="radio" name="category" value="active" checked> Active</label>
+            <label><input type="radio" name="category" value="important"> Important</label>
+            <label><input type="radio" name="category" value="promises"> Promises</label>
+            <label><input type="radio" name="category" value="critical"> Critical</label>
+        </div>
+        <div class="radio-group" data-group="timeframe">
+            <label><input type="radio" name="timeframe" value="upcoming this week"> Upcoming This Week</label>
+            <label><input type="radio" name="timeframe" value="due" checked> Due</label>
+            <label><input type="radio" name="timeframe" value="weekly review"> Weekly Review</label>
+            <label><input type="radio" name="timeframe" value="monthly review"> Monthly Review</label>
+            <label><input type="radio" name="timeframe" value="quarterly review"> Quarterly Review</label>
+            <label><input type="radio" name="timeframe" value="very old"> Very Old</label>
+        </div>
+        <div class="radio-group" data-group="availability">
+            <label><input type="radio" name="availability" value="anytime" checked> Anytime</label>
+            <label><input type="radio" name="availability" value="week daytime"> Week Daytime</label>
+            <label><input type="radio" name="availability" value="weekend and night"> Weekend and Night</label>
+        </div>
+        <div class="radio-group" data-group="location">
+            <label><input type="radio" name="location" value="all" checked> All</label>
+            <label><input type="radio" name="location" value="sat with baby"> Sat with Baby</label>
+            <label><input type="radio" name="location" value="up and about"> Up and About</label>
+        </div>
+    </div>
+    <div class="panel right">
+        <iframe id="todoistFrame" src="" frameborder="0" style="width: 100%; height: 100%;"></iframe>
+    </div>
+
+    <script>
+        // Default selections
+        const defaultSelections = {
+            category: "active",
+            timeframe: "due",
+            availability: "anytime",
+            location: "all"
+        };
+
+        // Query string mappings
+        const queryMappings = {
+            category: {
+                "all": "(p1 | ! p1)",
+                "planning": "@planning",
+                "comms": "@comms",
+                "morning routine": "@morning",
+                "active": "((p1 | @active | (#Inbox & ! /*)) & ! @comms & ! @morning & ! @planning)",
+                "important": "@important",
+                "promises": "@promise",
+                "critical": "p1"
+            },
+            timeframe: {
+                "upcoming this week": "(overdue | next 7 days | no date)",
+                "due": "(today | overdue | no date)",
+                "weekly review": "(created after: -14 days & created before: -7 days & ! recurring)",
+                "monthly review": "(created after: -60 days & created before: -30 days & ! recurring)",
+                "quarterly review": "(created after: -180 days & created before: -90 days & ! recurring)",
+                "very old": "(created before: -180 days & ! recurring)"
+            },
+            availability: {
+                "anytime": "(p1 | ! p1)",
+                "week daytime": "@weektime",
+                "weekend and night": "(! @weektime)"
+            },
+            location: {
+                "all": "(p1 | !p1)",
+                "sat with baby": "(! @babyfree)",
+                "up and about": "(@babyfree)"
+            }
+        };
+
+        function updateIframe() {
+            let queryString = "(! subtask) &";
+            document.querySelectorAll('.radio-group').forEach(group => {
+                const groupName = group.getAttribute('data-group');
+                const selectedRadio = group.querySelector('input[type="radio"]:checked').value;
+                queryString += `${queryMappings[groupName][selectedRadio]}&`;
+            });
+
+            // Remove trailing '&'
+            queryString = queryString.slice(0, -1);
+
+            // Debug: Log the constructed query string
+            console.log('Query String:', queryString);
+
+            encodedQueryString = encodeURIComponent(queryString);
+
+            todoistUrl = `https://app.todoist.com/app/search/${encodedQueryString}?intent=searchCompleted`;
+
+            console.log(todoistUrl);
+
+            const iframe = document.getElementById('todoistFrame');
+            iframe.src = todoistUrl ;
+        }
+
+        // Set default radio button selections
+        window.onload = () => {
+            document.querySelectorAll('.radio-group').forEach(group => {
+                const groupName = group.getAttribute('data-group');
+                const defaultSelection = defaultSelections[groupName];
+                group.querySelector(`input[value="${defaultSelection}"]`).checked = true;
+            });
+            updateIframe();
+        };
+
+        // Add event listeners to radio buttons
+        document.querySelectorAll('.radio-group input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', updateIframe);
+        });
+    </script>
+</body>
+</html>
+
